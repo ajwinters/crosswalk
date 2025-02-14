@@ -1,8 +1,5 @@
 """will be deleted sooner or later"""
 
-    
-
-
 
 def assign_ij(group, column):
 

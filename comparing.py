@@ -1,13 +1,9 @@
 """hyun woo kim, the pennsylvania state university, 2018-2019"""
-    
-    
-    
+      
     
 import recordlinkage, numpy
 
-
-
-    
+ 
 def dedupe(candidate_pairs, features, df):
 
     """
@@ -72,7 +68,6 @@ def dedupe(candidate_pairs, features, df):
             bmatrix[len(bmatrix.columns)] = bmatrix[it].min(axis = 1)
 
     return bmatrix
-
 
 
 def match(candidate_pairs, features, *dframes):

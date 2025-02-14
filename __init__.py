@@ -1,7 +1,5 @@
 """hyun woo kim, the pennsylvania state university, 2018-2019"""
 
-
-
 import sys
 import pandas
 import numpy

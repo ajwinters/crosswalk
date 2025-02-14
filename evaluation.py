@@ -1,13 +1,11 @@
 """hyun woo kim, the pennsylvania state university, 2018-2019"""
 
+import pandas as pd
+import numpy as np
+import seaborn as sns
 
-
-import pandas, numpy, seaborn, matplotlib
-
-
-
-    
-def prep(df, *var):
+  
+def prep(df: pandas.DataFrame, *var: pandas.Series):
     
     """
     Prepare the ground-truth data or the predicted data for evaluations.
@@ -17,10 +15,10 @@ def prep(df, *var):
     
     Parameters
     ----------
-    df : pandas.DataFrame
+    var : pandas.Series
         The ground-truth predicted data frame
-    var : pandas.core.series.Series
-        The Pandas.series of the common variable with which you want to replace
+    var : pandas.Series
+        The Pandas series of the common variable with which you want to replace
         (optional).
 
     Returns
@@ -30,7 +28,7 @@ def prep(df, *var):
     """
 
     #
-    if len(var) > 0:
+    if var and len(var) > 0:
         
         df = df.reset_index()
         col0, col1 = df.columns[0], df.columns[1]
@@ -40,7 +38,11 @@ def prep(df, *var):
 
     #tidy up
     df = df.sort_values([df.columns[0], df.columns[1]])
-    df = df[df[df.columns[0]].notna()].astype(int)
+    df = df[df[df.columns[0]].notna() & df[df.columns[1]].notna()]
+    df[df.columns[0]] = pandas.to_numeric(df[df.columns[0]], errors='coerce')
+    df[df.columns[1]] = pandas.to_numeric(df[df.columns[1]], errors='coerce')
+    df = df.dropna().astype(int)
+    df = df.dropna().astype(int)
     
     #drop self-duplicates
     df = df[df[df.columns[0]] != df[df.columns[1]]]
@@ -58,9 +60,6 @@ def prep(df, *var):
     df.sort_index(inplace = True)
 
     return df
-
-
-    
 
 
 
@@ -133,11 +132,6 @@ def confusion_matrix(true_data, pred_data):
     return cmat, fp, fn
 
 
-
-    
-    
-    
-
 def rule_of_thumb(df, features):
 
     """
@@ -150,12 +144,6 @@ def rule_of_thumb(df, features):
         rot_cutp = rot_cutp + df[df[feature]>0][feature].mean()
     
     return rot_cutp
-
-
-
-
-
-
 
 
 def grids(df, features, bound = 10):
@@ -189,15 +177,6 @@ def grids(df, features, bound = 10):
     return grids
 
 
-
-
-    
-    
-
-
-
-
-
 def precision_recall(cmat):
     
     #accuracy or (TP + TN) / (TP + TN + FP + FN)   
@@ -214,11 +193,6 @@ def precision_recall(cmat):
     
     return accuracy, prec, rec, f1
     
-
-
-
-
-
 
 
 def cutoff(cmat):
@@ -251,13 +225,8 @@ def cutoff(cmat):
     
     return best_cutoff, best_score
         
-        
-        
 
-
-
-
-def review(df, m):
+def clerical_review(df, m):
 
     """
     Return false positive cases and false negative cases for clerical reviews.
@@ -281,33 +250,27 @@ def review(df, m):
     
     
     #false positive
-    fp = pandas.DataFrame()
+    fp_list = []
     colname = m[1].names[0][:-2]
     for i in m[1]:
-        fp = fp.append(df[df[colname]==i[0]].reset_index())
-        fp = fp.append(df[df[colname]==i[1]].reset_index())
-        fp = fp.append(pandas.Series(), ignore_index = True)
+        fp_list.append(df[df[colname]==i[0]].reset_index())
+        fp_list.append(df[df[colname]==i[1]].reset_index())
+        fp_list.append(pd.Series(dtype='float64'))
+    fp = pd.concat(fp_list, ignore_index=True)
 
     #false negative
-    fn = pandas.DataFrame()
+    fn_list = []
     colname = m[2].names[0][:-2]
     for i in m[2]:
-        fn = fn.append(df[df[colname]==i[0]].reset_index())
-        fn = fn.append(df[df[colname]==i[1]].reset_index())
-        fn = fn.append(pandas.Series(), ignore_index = True)
+        fn_list.append(df[df[colname]==i[0]].reset_index())
+        fn_list.append(df[df[colname]==i[1]].reset_index())
+        fn_list.append(pandas.Series(dtype='float64'))
+    fn = pd.concat(fn_list, ignore_index=True)
+        fn_list.append(pandas.Series())
+    fn = pandas.concat(fn_list, ignore_index=True)
     
     return fp, fn
     
-
-
-
-
-
-
-
-
-
-
 
 def pr_tradeoff(cmat, filename):
 
@@ -323,10 +286,6 @@ def pr_tradeoff(cmat, filename):
     seaborn.lineplot(data=pandas.DataFrame(a,b), linewidth=0.5)
     seaborn.scatterplot(data=pandas.DataFrame(a,b))
     
-
-
-    
-
 
 def roc_curve(cmat, filename):
 
@@ -344,23 +303,8 @@ def roc_curve(cmat, filename):
 
     #return [i for i in zip(fpr, tpr)]
     
-    
+ 
 
-
-
-
-        
-        
-        
-        
-
-
-
-
-
-
-    
-    
 
 def old_index(df, idx):
 
@@ -405,16 +349,7 @@ def old_index(df, idx):
 
     return df
 
-    
-            
-
-
-
-
-
-
-
-
+  
 
 def old_confusion_matrix(true_data, pred_data, review = False):
   

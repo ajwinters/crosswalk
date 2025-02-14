@@ -1,9 +1,6 @@
 """hyun woo kim, the pennsylvania state university, 2018-2019"""
 
-
 import pandas, recordlinkage, jellyfish
-
-
         
 def dedupe(indexer, transposed, df):
      
@@ -49,11 +46,6 @@ def dedupe(indexer, transposed, df):
             cpairs = cpairs.append(cpairs_tba)
     
     return cpairs.drop_duplicates()
-
-
-
-
-
 
 
 def match(indexer, transposed, *dframes):
