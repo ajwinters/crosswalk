@@ -1,5 +1,5 @@
 # crosswalk
-Authored Hyun Woo Kim, The Pennsylvania State University, 2018-2019
+Authored by Hyun Woo Kim, The Pennsylvania State University, 2018-2019
 A library that performs probabilistic record linkage across non relational datasets. Built for linkages between PA administrative data, but is generalizable to any data set containing first and last names and other idenitifiers.
 _____
 
