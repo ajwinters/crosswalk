@@ -1,10 +1,10 @@
 # crosswalk
 Authored Hyun Woo Kim, The Pennsylvania State University, 2018-2019
-A library that performs probabilistic record linkage across non relational datasets
+A library that performs probabilistic record linkage across non relational datasets. Built for linkages between PA administrative data, but is generalizable to any data set containing first and last names and other idenitifiers.
 _____
 
 Code review Alex Winters, The Pennsylvania State University, 2020-2021  
-## Recent Updates and Enhancements
+## Updates and Enhancements
 
 ### 1. `sarahs_rule` Function (`preprocessing.py`)
 This function was updated to identify and document biological mothers based on specific rules and merge results into the `REL` DataFrame.

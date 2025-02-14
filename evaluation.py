@@ -265,7 +265,7 @@ def clerical_review(df, m):
         fn_list.append(df[df[colname]==i[0]].reset_index())
         fn_list.append(df[df[colname]==i[1]].reset_index())
         fn_list.append(pandas.Series(dtype='float64'))
-    fn = pd.concat(fn_list, ignore_index=True)
+        fn = pd.concat(fn_list, ignore_index=True)
         fn_list.append(pandas.Series())
     fn = pandas.concat(fn_list, ignore_index=True)
     
