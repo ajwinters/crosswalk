@@ -1,6 +1,8 @@
 """hyun woo kim, the pennsylvania state university, 2018-2019"""
 
+import pandas
 import pandas as pd
+import numpy
 import numpy as np
 import seaborn as sns
 

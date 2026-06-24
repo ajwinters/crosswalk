@@ -64,7 +64,8 @@ def dedupe(bmatrix, features, df, e = .05):
         
             #reset index
             freq = df[var].value_counts().reset_index()
-            
+            freq.columns = ['index', var]
+
             #join columns, level-f
             vector = vector.merge(freq, left_on = '_f', right_on = 'index')
             vector.rename(columns = {var: '_freq_f'}, inplace = True)
@@ -78,6 +79,7 @@ def dedupe(bmatrix, features, df, e = .05):
             #large n
             vector['_fg'] = vector['_f'] + vector['_g']
             N = vector['_fg'].value_counts().reset_index()
+            N.columns = ['index', '_fg']
             vector = vector.merge(N, how = 'left',
                                   left_on = '_fg', right_on = 'index')
             
@@ -351,8 +353,8 @@ def tiebreak(bmatrix, df):
     #hic rhodus, hic salta
     broken_gps = bmatrix[(gps0a & gps0b) & gps1            & (gps2 | gps3)]
     broken_cps = bmatrix[(cps0a & cps0b) & (cps1a & cps1b) & (cps2 | cps3)]
-    broken = broken_gps.append(broken_cps)
-    combined = bmatrix.append(broken)
+    broken = pandas.concat([broken_gps, broken_cps])
+    combined = pandas.concat([bmatrix, broken])
     combined = combined[~combined.index.duplicated(keep = False)]
     bmatrix = combined.set_index(['level_0', 'level_1'])
     
@@ -410,12 +412,13 @@ def components(df, edges, newvar, merge_by, fill_by):
     family = [c for c in networkx.connected_components(G)]
     
     idx = 1
-    fam = pandas.DataFrame()
+    fam_parts = []
     for i in family:
         tba = pandas.DataFrame(i)
         tba[newvar] = idx
-        fam = fam.append(tba, ignore_index = True, sort = False)
+        fam_parts.append(tba)
         idx = idx + 1
+    fam = pandas.concat(fam_parts, ignore_index=True) if fam_parts else pandas.DataFrame()
 
     #merge to subset
     if merge_by == 'index':
@@ -475,8 +478,8 @@ def comembership(matrix):
     matrix['value'] = 1
     matrix.set_index(mcol.tolist(), inplace = True)
     smat = scipy.sparse.coo_matrix((matrix['value'],
-                                   (matrix.index.labels[0],
-                                    matrix.index.labels[1])))
+                                   (matrix.index.codes[0],
+                                    matrix.index.codes[1])))
     
     #compute M'M and place it in df
     rmatrix = smat.T * smat

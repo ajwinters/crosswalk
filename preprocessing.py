@@ -40,27 +40,27 @@ def standardize(fields, df):
     # Straightforward exceptions
     stexcept = {"&QUOTE;JUNIOR&QUOTE;": "", "JAME'S": "JAMES", "&#39;": "",
                 "ISAIAHA'S": "ISAIAHAS", "JHON": "JOHN", "JONH": "JOHN"}
-    df[fields['firstname']].replace(regex=stexcept, inplace=True)
+    df[fields['firstname']] = df[fields['firstname']].replace(regex=stexcept)
 
     # Weak first names, such as D J SMITH
     cond1 = df[fields['firstname']].str.len() <= 3
     cond2 = df[fields['firstname']].str.contains(" |\.|/")
     stronger = df[fields['firstname']].replace(regex={' |\.': ''})
     df[fields['firstname']] = numpy.where(cond1 & cond2, stronger, df[fields['firstname']])
-    df[fields['firstname']].replace(regex={"MD": "MUHAMMAD"}, inplace=True)
+    df[fields['firstname']] = df[fields['firstname']].replace(regex={"MD": "MUHAMMAD"})
     
     # End up with one whitespace and one letter in the first name
     whitespace = {" [\w{1}]$": "", " [\w{1}]\.": "", " [\w{1}] [\w{1}]$": "",
                   " [\w{1}] [\w{1}]\.$": "", " [\w{1}]\. [\w{1}]$": "",
                   " [\w{1}]\. [\w{1}]\.$": ""}
-    df[fields['firstname']].replace(regex=whitespace, inplace=True)
+    df[fields['firstname']] = df[fields['firstname']].replace(regex=whitespace)
     
     # Drop if contains completely irrelevant
     agency1 = "CPS | CPS|^CPS$|CYF | CYF|^CYF$| AP |^AP$|^CYS$| CYS$|COCYS$|"
     agency2 = "DHS|HLTH| COUNTY|^COUNTY|PROVIDER"
     hopeless = agency1 + agency2
     for i in [fields['firstname'], fields['lastname']]:
-        df[i].fillna('', inplace=True)
+        df[i] = df[i].fillna('')
         df['valid'] = numpy.where(df[i].str.contains(hopeless), 0, df['valid'])
     df['valid'] = numpy.where((df[fields['firstname']] == "JOHN") & (df[fields['lastname']] == "DOE"), 0, df['valid'])
     df['valid'] = numpy.where((df[fields['firstname']] == "JANE") & (df[fields['lastname']] == "DOE"), 0, df['valid'])
@@ -80,7 +80,7 @@ def standardize(fields, df):
     role = "^SIR |MGM|MGF|MGFLG|MGDMA|PGM|PGF|FMOM| NM|WLG|"
     removal = "&#39;|&QUOT;|\`|\'|¿|Â|\+|\.|\#|\?|\*|\!|^-|[0-9]|PP#| PPN|^PRT$|^PR$|WFA|WMO$|NICKNAME|;|&AMP|~"
     for i in [fields['firstname'], fields['lastname']]:
-        df[i] = df[i].str.replace(role + removal, '')
+        df[i] = df[i].str.replace(role + removal, '', regex=True)
 
     # Remove parenthesis properly
     for i in [fields['firstname'], fields['lastname']]:
@@ -95,7 +95,7 @@ def standardize(fields, df):
     # Hyphen, whitespace, and underscore
     spc2 = "-| |_"
     for i in [fields['firstname'], fields['lastname']]:
-        df[i] = df[i].str.replace(spc2, '')
+        df[i] = df[i].str.replace(spc2, '', regex=True)
 
     # If less than 2 letters
     for i in [fields['firstname'], fields['lastname']]:
@@ -110,12 +110,12 @@ def standardize(fields, df):
     # Other than names (contains hyphen, underscore, irrelevant things)
     for i in ['ssn', 'suffix', 'mciid']:
         if fields.get(i) is not None:
-            df[fields[i]] = df[fields[i]].astype(str).replace("^0$|^999999999$", numpy.NaN, regex=True)
+            df[fields[i]] = df[fields[i]].astype(str).replace("^0$|^999999999$", numpy.nan, regex=True)
             df[fields[i]] = pandas.to_numeric(df[fields[i]], errors='coerce')
     
     # County
     if fields.get('county') is not None:
-        df[fields['county']].replace('', numpy.nan, inplace=True)
+        df[fields['county']] = df[fields['county']].replace('', numpy.nan)
         
     # Make date format consistent
     if fields.get('dobyy') and fields.get('dobmm') and fields.get('dobdd'):
@@ -315,10 +315,10 @@ def biomoms(majors, minors, REL):
 
     #kid's name    
     for i in ['kidfname', 'kidlname']:
-        mnk[i].fillna('', inplace = True)
+        mnk[i] = mnk[i].fillna('')
         mnk[i] = mnk[i].apply(jellyfish.soundex)
     mnk['kid_name'] = mnk['kidfname'] + mnk['kidlname']
-    mnk['kid_name'].replace('', numpy.nan, inplace = True)
+    mnk['kid_name'] = mnk['kid_name'].replace('', numpy.nan)
     
     #prepare to go home
     dropcol = ['referralpersonid_y', 'kidlname', 'kidfname', 'relationship',
@@ -384,7 +384,7 @@ def children(majors, minors, REL):
     moms_rel = moms.merge(other, how='left', on=['referralid', 'referralpersonid'])
     moms_rel.drop(columns=['relationship', 'prior'], inplace=True)
     for name in ['firstname', 'lastname']:
-        moms_rel[name].fillna('', inplace=True)
+        moms_rel[name] = moms_rel[name].fillna('')
     moms_rel['SDX'] = moms_rel['firstname'].apply(jellyfish.soundex) + \
                       moms_rel['lastname'].apply(jellyfish.soundex)
 
@@ -392,7 +392,7 @@ def children(majors, minors, REL):
     dads_rel = dads.merge(other, how='left', on=['referralid', 'referralpersonid'])
     dads_rel.drop(columns=['relationship', 'prior'], inplace=True)
     for name in ['firstname', 'lastname']:
-        dads_rel[name].fillna('', inplace=True)
+        dads_rel[name] = dads_rel[name].fillna('')
     dads_rel['SDX'] = dads_rel['firstname'].apply(jellyfish.soundex) + \
                       dads_rel['lastname'].apply(jellyfish.soundex)
     
@@ -415,7 +415,7 @@ def children(majors, minors, REL):
     # Prepare to go home       
     REL.drop(columns=['prior'], inplace=True)
     for i in ['SDX_mom', 'SDX_dad']:
-        family[i] = family[i].replace('', numpy.NaN)
+        family[i] = family[i].replace('', numpy.nan)
     dropcol = ['role_perp', 'role_child', 'role_parent', 'role_caretaker',
                'role_guardian', 'role_reporter', 'role_collat']
     child = family.drop(columns=dropcol)

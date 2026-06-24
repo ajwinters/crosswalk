@@ -1,0 +1,8 @@
+# Keep the build context tiny — the repo is mounted at runtime, not COPYied in.
+.git
+__pycache__/
+**/__pycache__/
+*.pyc
+*.prof
+data/
+.vscode/
