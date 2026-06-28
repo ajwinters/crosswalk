@@ -39,6 +39,7 @@ is cheap and wastes little memory.
 """
 
 import numpy as np
+import pandas as pd
 import numba
 from numba import cuda
 
@@ -193,18 +194,18 @@ def encode_names(strings, maxlen=MAXLEN):
       lens : (n,) int32 array -- the real length of each name
 
     This is the bridge from "Python strings" to "numbers a kernel can read."
+
+    Vectorized: cast to fixed-width null-padded bytes ('S{maxlen}') and view as
+    uint8. For standardized names (short, uppercase ASCII) this is byte-identical
+    to the per-character loop it replaces, but runs in C instead of Python -- the
+    difference between negligible and a real bottleneck at 1M+ records.
     """
-    n = len(strings)
-    buf = np.zeros((n, maxlen), dtype=np.uint8)
-    lens = np.zeros(n, dtype=np.int32)
-    for i, s in enumerate(strings):
-        if s is None:                       # missing name -> length 0 (handled
-            continue                        # as an edge case in the kernel)
-        s = str(s)[:maxlen]                 # truncate anything over MAXLEN
-        lens[i] = len(s)
-        for j in range(len(s)):
-            buf[i, j] = ord(s[j]) & 0xFF    # ASCII code into the byte grid
-    return buf, lens
+    s = pd.Series(strings).fillna("").astype(str).str.slice(0, maxlen)
+    lens = s.str.len().to_numpy().astype(np.int32)
+    if len(s) == 0:
+        return np.zeros((0, maxlen), dtype=np.uint8), lens
+    buf = s.to_numpy().astype("S" + str(maxlen)).view(np.uint8).reshape(-1, maxlen)
+    return np.ascontiguousarray(buf), lens
 
 
 def jaro_winkler_pairwise(list_a, list_b, maxlen=MAXLEN, threads_per_block=128):
