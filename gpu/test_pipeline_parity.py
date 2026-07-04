@@ -27,10 +27,10 @@ sys.path.insert(0, PSU)
 sys.path.insert(0, os.path.join(REPO, "datagen"))
 sys.path.insert(0, HERE)
 
-import crosswalk.preprocessing
-import crosswalk.indexing
-import crosswalk.comparing
-import crosswalk.classifier
+import crosswalk.shared.preprocessing
+import crosswalk.cpu.indexing
+import crosswalk.cpu.comparing
+import crosswalk.cpu.classifier
 from generate_data import generate_match_data
 import comparing as gpu_comparing
 import classifier as gpu_classifier
@@ -47,11 +47,11 @@ FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
 
 def main(n_records=10000, seed=42):
     dfA, dfB = generate_match_data(n_records=n_records, seed=seed)
-    dfA = crosswalk.preprocessing.standardize(FIELDS, dfA)
-    dfB = crosswalk.preprocessing.standardize(FIELDS, dfB)
+    dfA = crosswalk.shared.preprocessing.standardize(FIELDS, dfA)
+    dfB = crosswalk.shared.preprocessing.standardize(FIELDS, dfB)
     valid_A = dfA[dfA["valid"] == 1].copy()
     valid_B = dfB[dfB["valid"] == 1].copy()
-    cpairs = crosswalk.indexing.match(INDEXER, TRANSPOSED, valid_A, valid_B)
+    cpairs = crosswalk.cpu.indexing.match(INDEXER, TRANSPOSED, valid_A, valid_B)
     cf = [FEATURES[0], FEATURES[1]]
     print(f"records: {len(valid_A)} x {len(valid_B)} | candidate pairs: {len(cpairs):,}")
 
@@ -62,9 +62,9 @@ def main(n_records=10000, seed=42):
 
     # --- CPU path ---
     t0 = time.perf_counter()
-    cpu_bm = crosswalk.comparing.match(cpairs, cf, valid_A, valid_B)
+    cpu_bm = crosswalk.cpu.comparing.match(cpairs, cf, valid_A, valid_B)
     t1 = time.perf_counter()
-    cpu_vec = crosswalk.classifier.match(cpu_bm, FEATURES, valid_A, valid_B)
+    cpu_vec = crosswalk.cpu.classifier.match(cpu_bm, FEATURES, valid_A, valid_B)
     t2 = time.perf_counter()
 
     # --- GPU path ---

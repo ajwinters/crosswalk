@@ -28,10 +28,10 @@ sys.path.insert(0, PSU)
 sys.path.insert(0, os.path.join(REPO, "datagen"))
 sys.path.insert(0, HERE)
 
-import crosswalk.preprocessing
-import crosswalk.indexing
-import crosswalk.comparing
-import crosswalk.classifier
+import crosswalk.shared.preprocessing
+import crosswalk.cpu.indexing
+import crosswalk.cpu.comparing
+import crosswalk.cpu.classifier
 from generate_data import generate_match_data
 from numba import cuda
 import indexing as gpu_indexing
@@ -71,15 +71,15 @@ def run_gpu(valid_A, valid_B):
 def run_cpu(valid_A, valid_B):
     timings = {}
     t = time.perf_counter()
-    cpairs = crosswalk.indexing.match(INDEXER, TRANSPOSED, valid_A, valid_B)
+    cpairs = crosswalk.cpu.indexing.match(INDEXER, TRANSPOSED, valid_A, valid_B)
     timings["Indexing"] = time.perf_counter() - t
 
     t = time.perf_counter()
-    bm = crosswalk.comparing.match(cpairs, COMPARE_FEATURES, valid_A, valid_B)
+    bm = crosswalk.cpu.comparing.match(cpairs, COMPARE_FEATURES, valid_A, valid_B)
     timings["Comparing"] = time.perf_counter() - t
 
     t = time.perf_counter()
-    vec = crosswalk.classifier.match(bm, FEATURES, valid_A, valid_B)
+    vec = crosswalk.cpu.classifier.match(bm, FEATURES, valid_A, valid_B)
     timings["Classifier"] = time.perf_counter() - t
     return cpairs, vec, timings
 
@@ -102,8 +102,8 @@ def main():
     gen_t = time.perf_counter() - t
 
     t = time.perf_counter()
-    dfA = crosswalk.preprocessing.standardize(FIELDS, dfA)
-    dfB = crosswalk.preprocessing.standardize(FIELDS, dfB)
+    dfA = crosswalk.shared.preprocessing.standardize(FIELDS, dfA)
+    dfB = crosswalk.shared.preprocessing.standardize(FIELDS, dfB)
     valid_A = dfA[dfA["valid"] == 1].copy()
     valid_B = dfB[dfB["valid"] == 1].copy()
     std_t = time.perf_counter() - t

@@ -30,10 +30,10 @@ sys.path.insert(0, PSU)
 sys.path.insert(0, os.path.join(REPO, "datagen"))
 sys.path.insert(0, HERE)
 
-import crosswalk.preprocessing
-import crosswalk.indexing
-import crosswalk.comparing
-import crosswalk.classifier
+import crosswalk.shared.preprocessing
+import crosswalk.cpu.indexing
+import crosswalk.cpu.comparing
+import crosswalk.cpu.classifier
 from generate_data import generate_match_data
 from streaming import StreamingMatcher
 import cupy as cp
@@ -57,8 +57,8 @@ def log(*a):
 def prep(n, seed=42):
     t = time.perf_counter()
     dfA, dfB = generate_match_data(n_records=n, seed=seed)
-    dfA = crosswalk.preprocessing.standardize(FIELDS, dfA)
-    dfB = crosswalk.preprocessing.standardize(FIELDS, dfB)
+    dfA = crosswalk.shared.preprocessing.standardize(FIELDS, dfA)
+    dfB = crosswalk.shared.preprocessing.standardize(FIELDS, dfB)
     vA = dfA[dfA["valid"] == 1].copy()
     vB = dfB[dfB["valid"] == 1].copy()
     return vA, vB, time.perf_counter() - t
@@ -86,9 +86,9 @@ def gpu_run(vA, vB, threshold):
 
 def cpu_run(vA, vB):
     t = time.perf_counter()
-    cpairs = crosswalk.indexing.match(INDEXER, TRANSPOSED, vA, vB)
-    bm = crosswalk.comparing.match(cpairs, CF, vA, vB)
-    vec = crosswalk.classifier.match(bm, FEATURES, vA, vB)
+    cpairs = crosswalk.cpu.indexing.match(INDEXER, TRANSPOSED, vA, vB)
+    bm = crosswalk.cpu.comparing.match(cpairs, CF, vA, vB)
+    vec = crosswalk.cpu.classifier.match(bm, FEATURES, vA, vB)
     return vec["fs_score"], time.perf_counter() - t
 
 

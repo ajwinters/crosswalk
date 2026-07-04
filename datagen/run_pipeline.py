@@ -28,10 +28,10 @@ sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-import crosswalk.preprocessing
-import crosswalk.indexing
-import crosswalk.comparing
-import crosswalk.classifier
+import crosswalk.shared.preprocessing
+import crosswalk.cpu.indexing
+import crosswalk.cpu.comparing
+import crosswalk.cpu.classifier
 from generate_data import (
     generate_dedupe_data, generate_match_data, DEFAULT_BINARY_FIELDS,
 )
@@ -493,7 +493,7 @@ def run_dedupe_pipeline(args, profiler):
     # Step 2: Standardize
     profiler.start("Standardize (dedupe)")
     print("\n--- Step 2: Standardize ---")
-    df = crosswalk.preprocessing.standardize(fields, df)
+    df = crosswalk.shared.preprocessing.standardize(fields, df)
     valid_df = df[df['valid'] == 1].copy()
     print(f"Valid records: {len(valid_df)} / {len(df)}")
     invalid = df[df['valid'] == 0]
@@ -506,7 +506,7 @@ def run_dedupe_pipeline(args, profiler):
     # Step 3: Indexing (blocking)
     profiler.start("Indexing (dedupe)")
     print("\n--- Step 3: Indexing (blocking) ---")
-    cpairs = crosswalk.indexing.dedupe(indexer, transposed, valid_df)
+    cpairs = crosswalk.cpu.indexing.dedupe(indexer, transposed, valid_df)
     print(f"Candidate pairs: {len(cpairs):,}")
     profiler.stop(f"{len(cpairs):,} pairs")
 
@@ -518,7 +518,7 @@ def run_dedupe_pipeline(args, profiler):
     profiler.start("Comparing (dedupe)")
     print("\n--- Step 4: Comparing (Jaro-Winkler + exact) ---")
     compare_features = [features[0], features[1]]
-    bmatrix = crosswalk.comparing.dedupe(cpairs, compare_features, valid_df)
+    bmatrix = crosswalk.cpu.comparing.dedupe(cpairs, compare_features, valid_df)
     print(f"Boolean matrix shape: {bmatrix.shape}")
     if verbose:
         print(bmatrix.head(10).to_string())
@@ -527,7 +527,7 @@ def run_dedupe_pipeline(args, profiler):
     # Step 5: Classifier (Fellegi-Sunter)
     profiler.start("Classifier (dedupe)")
     print("\n--- Step 5: Classifier (Fellegi-Sunter weights) ---")
-    vector = crosswalk.classifier.dedupe(bmatrix, features, valid_df)
+    vector = crosswalk.cpu.classifier.dedupe(bmatrix, features, valid_df)
     weight_cols = [c for c in vector.columns if isinstance(c, str) and c.startswith('w_')]
     print(f"Weight columns: {weight_cols}")
     print(f"\nfs_score distribution:")
@@ -542,7 +542,7 @@ def run_dedupe_pipeline(args, profiler):
     # Step 6: Tiebreak
     profiler.start("Tiebreak (dedupe)")
     print("\n--- Step 6: Tiebreak ---")
-    result, broken = crosswalk.classifier.tiebreak(vector, valid_df)
+    result, broken = crosswalk.cpu.classifier.tiebreak(vector, valid_df)
     print(f"Pairs after tiebreak: {len(result)}")
     print(f"Ties broken (removed): {len(broken)}")
     if verbose and len(broken) > 0:
@@ -559,7 +559,7 @@ def run_dedupe_pipeline(args, profiler):
 
     famid = None
     if len(links) > 0:
-        famid = crosswalk.classifier.components(
+        famid = crosswalk.cpu.classifier.components(
             valid_df, links['fs_score'], 'entity_id', 'index', 'county'
         )
         print(f"\nUnique entities identified: {famid['entity_id'].nunique()}")
@@ -610,8 +610,8 @@ def run_match_pipeline(args, profiler):
     # Step 2: Standardize both
     profiler.start("Standardize (match)")
     print("\n--- Step 2: Standardize ---")
-    dfA = crosswalk.preprocessing.standardize(fields, dfA)
-    dfB = crosswalk.preprocessing.standardize(fields, dfB)
+    dfA = crosswalk.shared.preprocessing.standardize(fields, dfA)
+    dfB = crosswalk.shared.preprocessing.standardize(fields, dfB)
     valid_A = dfA[dfA['valid'] == 1].copy()
     valid_B = dfB[dfB['valid'] == 1].copy()
     print(f"Valid: dfA={len(valid_A)}, dfB={len(valid_B)}")
@@ -620,7 +620,7 @@ def run_match_pipeline(args, profiler):
     # Step 3: Indexing
     profiler.start("Indexing (match)")
     print("\n--- Step 3: Indexing (blocking) ---")
-    cpairs = crosswalk.indexing.match(indexer, transposed, valid_A, valid_B)
+    cpairs = crosswalk.cpu.indexing.match(indexer, transposed, valid_A, valid_B)
     print(f"Candidate pairs: {len(cpairs):,}")
     profiler.stop(f"{len(cpairs):,} pairs")
 
@@ -632,7 +632,7 @@ def run_match_pipeline(args, profiler):
     profiler.start("Comparing (match)")
     print("\n--- Step 4: Comparing ---")
     compare_features = [features[0], features[1]]
-    bmatrix = crosswalk.comparing.match(cpairs, compare_features, valid_A, valid_B)
+    bmatrix = crosswalk.cpu.comparing.match(cpairs, compare_features, valid_A, valid_B)
     print(f"Boolean matrix shape: {bmatrix.shape}")
     if verbose:
         print(bmatrix.head(10).to_string())
@@ -641,7 +641,7 @@ def run_match_pipeline(args, profiler):
     # Step 5: Classifier
     profiler.start("Classifier (match)")
     print("\n--- Step 5: Classifier (Fellegi-Sunter weights) ---")
-    vector = crosswalk.classifier.match(bmatrix, features, valid_A, valid_B)
+    vector = crosswalk.cpu.classifier.match(bmatrix, features, valid_A, valid_B)
     weight_cols = [c for c in vector.columns if isinstance(c, str) and c.startswith('w_')]
     print(f"\nfs_score distribution:")
     print(vector['fs_score'].describe().to_string())

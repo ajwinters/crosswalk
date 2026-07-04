@@ -22,10 +22,10 @@ sys.path.insert(0, PSU)
 sys.path.insert(0, os.path.join(REPO, "datagen"))
 sys.path.insert(0, HERE)
 
-import crosswalk.preprocessing
-import crosswalk.indexing
-import crosswalk.comparing
-import crosswalk.classifier
+import crosswalk.shared.preprocessing
+import crosswalk.cpu.indexing
+import crosswalk.cpu.comparing
+import crosswalk.cpu.classifier
 from generate_data import generate_match_data
 from streaming import StreamingMatcher
 
@@ -41,15 +41,15 @@ FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
 
 def main(n_records=5000, seed=42, target_chunk_pairs=2_000_000):
     dfA, dfB = generate_match_data(n_records=n_records, seed=seed)
-    dfA = crosswalk.preprocessing.standardize(FIELDS, dfA)
-    dfB = crosswalk.preprocessing.standardize(FIELDS, dfB)
+    dfA = crosswalk.shared.preprocessing.standardize(FIELDS, dfA)
+    dfB = crosswalk.shared.preprocessing.standardize(FIELDS, dfB)
     vA = dfA[dfA["valid"] == 1].copy()
     vB = dfB[dfB["valid"] == 1].copy()
 
     # CPU reference: full pipeline
-    cpairs = crosswalk.indexing.match(INDEXER, TRANSPOSED, vA, vB)
-    cpu_bm = crosswalk.comparing.match(cpairs, [FEATURES[0], FEATURES[1]], vA, vB)
-    cpu_vec = crosswalk.classifier.match(cpu_bm, FEATURES, vA, vB)
+    cpairs = crosswalk.cpu.indexing.match(INDEXER, TRANSPOSED, vA, vB)
+    cpu_bm = crosswalk.cpu.comparing.match(cpairs, [FEATURES[0], FEATURES[1]], vA, vB)
+    cpu_vec = crosswalk.cpu.classifier.match(cpu_bm, FEATURES, vA, vB)
     cpu_fs = cpu_vec["fs_score"]
     print(f"CPU candidate pairs: {len(cpu_fs):,}")
 

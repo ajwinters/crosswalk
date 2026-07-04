@@ -8,11 +8,11 @@ import recordlinkage
 import os
 import scipy
 
-import crosswalk.preprocessing
-import crosswalk.indexing
-import crosswalk.comparing
-import crosswalk.classifier
-import crosswalk.evaluation
+import crosswalk.shared.preprocessing
+import crosswalk.cpu.indexing
+import crosswalk.cpu.comparing
+import crosswalk.cpu.classifier
+import crosswalk.cpu.evaluation
 
    
 from ._version import get_versions
