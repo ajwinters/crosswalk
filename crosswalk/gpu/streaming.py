@@ -34,8 +34,8 @@ import cupy as cp
 import cudf
 from numba import cuda
 
-from jaro_winkler import encode_names
-from comparing import _name_compare_kernel
+from .jaro_winkler import encode_names
+from .comparing import _name_compare_kernel
 
 _TPB = 128
 

@@ -46,18 +46,34 @@ targets.
 
 ## Setup
 
-RAPIDS is Linux-only, so everything runs in a container (the `Dockerfile`
-pip-installs cuDF, cuPy, Numba, and the CPU dependencies). On Windows this uses
-Docker Desktop's WSL2 backend with GPU passthrough. You need an **NVIDIA GPU**.
+There are two backends. The matcher **auto-detects** which is available and
+falls back gracefully, so the same command runs on a laptop or a GPU box
+(override with `--backend gpu|cpu`).
+
+**CPU — any machine, no GPU, no Docker.** Install the package (pulls the
+CPU dependencies) and run the console commands:
 
 ```bash
-# build the image once
-docker build -t crosswalk-gpu .
-
-# run anything inside it, mounting the repo and attaching the GPU
-docker run --rm --gpus all -v "<repo-path>:/workspace/crosswalk" crosswalk-gpu \
-    python /workspace/crosswalk/<script>
+pip install -e .                        # installs crosswalk + CPU deps + CLI
+crosswalk-generate --n-records 10000    # write sample A/B CSVs to ./data
+crosswalk-match --backend cpu           # match -> ./data/matches.csv
 ```
+
+**GPU — NVIDIA.** The GPU path needs RAPIDS (cuDF/cuPy) + Numba, which are
+Linux-only, so it runs in a container (the Dockerfile installs them and the
+package). On Windows this uses Docker Desktop's WSL2 backend with GPU passthrough.
+
+```bash
+docker build -t crosswalk-gpu .         # builds the `crosswalk-gpu` image
+docker run --rm --gpus all -v "<repo-path>:/workspace/crosswalk" crosswalk-gpu \
+    python scripts/run_pipeline_gpu.py --n-records 10000 --compare-cpu
+```
+(That runner self-generates data and prints the per-stage CPU-vs-GPU speedups and
+`fs_score` parity; the `crosswalk-*` commands work inside the container too.)
+
+With the default `--backend auto`, commands use the card when present and
+silently fall back to the CPU pipeline if not — same bit-identical results, just
+slower.
 
 ---
 
@@ -91,7 +107,7 @@ exact-match + Fellegi–Sunter path automatically.
 ```python
 import pandas as pd
 import crosswalk.shared.preprocessing as preprocessing
-from streaming import StreamingMatcher          # gpu/streaming.py
+from crosswalk.gpu.backend import link            # auto-selects GPU/CPU
 
 # 1. load your two datasets (rename name columns to the contract above)
 dfA = pd.read_csv("my_data_A.csv")
@@ -116,15 +132,14 @@ dfB = preprocessing.standardize(FIELDS, dfB)
 vA = dfA[dfA["valid"] == 1].copy()
 vB = dfB[dfB["valid"] == 1].copy()
 
-# 4. match on the GPU — streams, so record count is not memory-bound
-matcher = StreamingMatcher(vA, vB, FEATURES)
-links = matcher.run(INDEXER, TRANSPOSED, score_threshold=25)
+# 4. match — uses the GPU if available (streaming, memory-bounded), else the CPU
+links = link(vA, vB, INDEXER, TRANSPOSED, FEATURES, threshold=25)
 # links: one row per match, indexed by (level_0, level_1) with an fs_score column
 ```
 
-`gpu/run_match_csv.py` is a working reference implementation of exactly this
-(CSV in → scored matches out). The simplest way to run your own data is to copy
-it and edit the config block at the top.
+The `crosswalk-match` command (`crosswalk/cli/match.py`) is a working reference
+implementation of exactly this — CSV in → scored matches out. The simplest way
+to run your own data is to copy it and point the config at your columns.
 
 ### Two things to tune
 
@@ -146,10 +161,10 @@ string cleaning and never the bottleneck.
 **How it's built:**
 - **RAPIDS cuDF** does the blocking joins; **cuPy** does the Fellegi–Sunter
   arithmetic — the parts that map onto existing GPU primitives.
-- A **custom Numba CUDA kernel** (`gpu/jaro_winkler.py`) implements Jaro–Winkler,
-  the one primitive RAPIDS doesn't provide. It mirrors the CPU (`jellyfish`)
-  implementation exactly, so the thresholded results match bit-for-bit.
-- A **streaming matcher** (`gpu/streaming.py`) is the scalable path: it uploads
+- A **custom Numba CUDA kernel** (`crosswalk/gpu/jaro_winkler.py`) implements
+  Jaro–Winkler, the one primitive RAPIDS doesn't provide. It mirrors the CPU
+  (`jellyfish`) implementation exactly, so the thresholded results match bit-for-bit.
+- A **streaming matcher** (`crosswalk/gpu/streaming.py`) is the scalable path: it uploads
   the record data once, then streams candidate pairs through in output-bounded
   chunks, scoring each chunk fully on-device and keeping only links above a
   threshold. **Peak memory is bounded by chunk size, not pair count** — so it
@@ -168,27 +183,32 @@ The CPU cannot run the 1M locally — it would need to materialize a ~320 GB
 candidate-pair index. The original CPU port was run on a distributed platform
 with some additional blocking tricks and 16hr estimate matches closely with those
 earlier runs. The GPU streams it in minutes within a couple GB of VRAM.
-`gpu/plot_benchmark.py` renders this comparison as `benchmark_cpu_vs_gpu.png`.
+![CPU vs GPU — wall time vs dataset size (log-log)](docs/benchmark_cpu_vs_gpu.png)
+
+*(regenerate with `python scripts/plot_benchmark.py`)*
 
 ---
 
 ## Repository layout
 
 ```
-crosswalk/
-├── shared/preprocessing.py     # standardize — shared front-end (CPU, O(N))
-├── cpu/                        # original CPU backend (recordlinkage / jellyfish)
-│   └── indexing.py  comparing.py  classifier.py  evaluation.py
-├── gpu/                        # GPU port (RAPIDS cuDF/cuPy + Numba)
-│   ├── jaro_winkler.py         # custom CUDA Jaro–Winkler kernel
-│   ├── indexing.py comparing.py classifier.py   # per-stage GPU ports
-│   ├── streaming.py            # StreamingMatcher — the scalable path
-│   ├── run_match_csv.py        # CSV in -> scored matches out (start here)
-│   ├── run_pipeline_gpu.py     # one-command CPU-vs-GPU runner
-│   ├── benchmark_1m.py  plot_benchmark.py
-│   └── test_streaming_parity.py  test_pipeline_parity.py
-├── datagen/                    # synthetic-data generator + CPU harness
-└── Dockerfile                  # builds the `crosswalk-gpu` image
+crosswalk/                       # git repo root
+├── pyproject.toml               # package + `crosswalk-*` console commands
+├── crosswalk/                   # the installable package
+│   ├── shared/preprocessing.py  # standardize — shared front-end (CPU, O(N))
+│   ├── cpu/                     # original CPU backend (recordlinkage / jellyfish)
+│   │   └── indexing.py  comparing.py  classifier.py  evaluation.py
+│   ├── gpu/                     # GPU port (RAPIDS cuDF/cuPy + Numba)
+│   │   ├── jaro_winkler.py      # custom CUDA Jaro–Winkler kernel
+│   │   ├── indexing.py comparing.py classifier.py   # per-stage GPU ports
+│   │   ├── streaming.py         # StreamingMatcher — the scalable path
+│   │   ├── backend.py           # auto-select GPU/CPU backend — link()
+│   │   └── config.py            # sample pipeline schema (edit for your data)
+│   ├── datagen/                 # synthetic-data generator
+│   └── cli/                     # console entry points: match, generate, benchmark
+├── scripts/                     # run_pipeline_gpu, run_pipeline (CPU harness), plot_benchmark
+├── tests/                       # parity tests (GPU == CPU)
+└── docs/  data/  Dockerfile  README.md
 ```
 
 The CPU backend is kept intact — it's the correctness oracle the GPU port is
@@ -198,21 +218,21 @@ validated against.
 
 ## Demo & benchmarks (synthetic data)
 
-`datagen/` generates realistic synthetic linkage data — Zipf-distributed names,
-typos, transpositions, nicknames, phonetic and OCR variants, missing fields — with
-a `true_entity_id` ground-truth column, so you can measure precision and recall
-without real data.
+The `crosswalk.datagen` generator produces realistic synthetic linkage data —
+Zipf-distributed names, typos, transpositions, nicknames, phonetic and OCR
+variants, missing fields — with a `true_entity_id` ground-truth column, so you
+can measure precision and recall without real data.
 
-| Task | Script |
-|------|--------|
-| CPU-vs-GPU on generated data | `gpu/run_pipeline_gpu.py --n-records 10000 --compare-cpu` |
-| Persist a fixed synthetic dataset | `datagen/save_match_data.py --n-records 100000` |
-| Match those CSVs → scored output | `gpu/run_match_csv.py --threshold 25` |
-| Scaling benchmark up to 1M | `gpu/benchmark_1m.py` |
-| Parity tests (GPU == CPU) | `gpu/test_streaming_parity.py`, `gpu/test_pipeline_parity.py` |
-| Original CPU pipeline (sanity check) | `datagen/run_pipeline.py --small` |
+| Task | Command |
+|------|---------|
+| Persist a fixed synthetic dataset | `crosswalk-generate --n-records 100000` |
+| Match those CSVs → scored output | `crosswalk-match --threshold 25` |
+| Scaling benchmark up to 1M | `crosswalk-benchmark` |
+| CPU-vs-GPU on generated data | `python scripts/run_pipeline_gpu.py --n-records 10000 --compare-cpu` |
+| Parity tests (GPU == CPU) | `python tests/test_streaming_parity.py` · `tests/test_pipeline_parity.py` |
+| Original CPU pipeline / dedupe (sanity) | `python scripts/run_pipeline.py --small` |
 
-`run_match_csv.py` writes `data/matches.csv` — one row per match with both
+`crosswalk-match` writes `data/matches.csv` — one row per match with both
 records' fields, both `true_entity_id`s, an `is_true_match` flag, and the
 `fs_score` — so precision/recall against ground truth is immediate.
 

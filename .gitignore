@@ -1,2 +1,4 @@
-data/matches.csv
+data/*.csv
 *.prof
+__pycache__/
+*.pyc

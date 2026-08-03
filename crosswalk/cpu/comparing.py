@@ -17,7 +17,7 @@ def dedupe(candidate_pairs, features, df):
     Parameters
     ----------
     candidate_pairs : pandas.multiindex
-        Index file created from crosswalk.indexing.dedupe
+        Index file created from crosswalk.cpu.indexing.dedupe
     features : a list of two lists
         The first list should contain features and the second one should
         contain the slice position of interaction terms in df.
@@ -83,7 +83,7 @@ def match(candidate_pairs, features, *dframes):
     Parameters
     ----------
     candidate_pairs : pandas.multiindex
-        Index file created from crosswalk.indexing.dedupe
+        Index file created from crosswalk.cpu.indexing.dedupe
     features : a list of two lists
         The first list should contain features and the second one should
         contain the slice position of interaction terms in df.

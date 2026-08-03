@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crosswalk"
+version = "0.1.0"
+description = "GPU-accelerated probabilistic (Fellegi-Sunter) record linkage"
+readme = "README.md"
+requires-python = ">=3.10"
+# CPU backend only — installs and runs on any machine, no GPU.
+dependencies = [
+    "pandas",
+    "numpy",
+    "jellyfish",
+    "recordlinkage",
+    "scipy",
+    "networkx",
+]
+
+[project.optional-dependencies]
+# GPU backend (Linux + NVIDIA). cudf-cu12 needs the NVIDIA index:
+#   pip install "crosswalk[gpu]" --extra-index-url https://pypi.nvidia.com
+gpu = ["cudf-cu12", "cupy-cuda12x", "numba"]
+# Plotting / evaluation utilities.
+plot = ["matplotlib", "seaborn"]
+
+[project.scripts]
+crosswalk-match = "crosswalk.cli.match:main"
+crosswalk-generate = "crosswalk.cli.generate:main"
+crosswalk-benchmark = "crosswalk.cli.benchmark:main"
+
+[tool.setuptools.packages.find]
+include = ["crosswalk*"]

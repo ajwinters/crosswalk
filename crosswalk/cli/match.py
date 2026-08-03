@@ -1,46 +1,30 @@
 """
-Load persisted A/B CSVs, run the GPU streaming match, and write the matches
-(fs_score >= threshold) to an output CSV for analysis.
+Load persisted A/B CSVs, run the match (GPU when available, else CPU), and write
+the matches (fs_score >= threshold) to an output CSV for analysis.
 
 This is the "consume the fixed input" step of the persistent-CSV workflow. It
 does NOT regenerate data -- it reads the files written by
-datagen/save_match_data.py, so the same inputs are used every run and the output
+crosswalk-generate, so the same inputs are used every run and the output
 can be joined back to them.
 
 The output CSV has one row per match, with both records' ids/names/ssn, both
 true_entity_ids, an is_true_match flag, and the fs_score -- enough to measure
 precision/recall and eyeball why a pair matched.
 
-  docker run --rm --gpus all -v "<repo>:/workspace/crosswalk" crosswalk-gpu \
-      python /workspace/crosswalk/gpu/run_match_csv.py --threshold 15
+Run as `crosswalk-match --threshold 15` (after `pip install -e .`) or
+`python -m crosswalk.cli.match --threshold 15`.
 """
 
 import argparse
 import os
-import sys
 
-import numpy as np
 import pandas as pd
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
-PSU = os.path.dirname(REPO)
-sys.path.insert(0, PSU)
-sys.path.insert(0, HERE)
-
 import crosswalk.shared.preprocessing
-from streaming import StreamingMatcher
+from crosswalk.gpu.backend import link, resolve_backend
+from crosswalk.gpu.config import FIELDS, INDEXER, TRANSPOSED, FEATURES
 
-DATA_DIR = os.path.join(REPO, "data")
-
-FIELDS = {
-    "firstname": "firstname", "lastname": "lastname", "suffix": "suffix",
-    "ssn": "ssn", "mciid": "mciid", "county": "county",
-    "dobyy": "dobyy", "dobmm": "dobmm", "dobdd": "dobdd",
-}
-INDEXER = ["firstname", "lastname", "ssn"]
-TRANSPOSED = [["firstname", "lastname"]]
-FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
+DATA_DIR = "data"   # default I/O dir, relative to the current working directory
 
 # Force text columns to load as strings. county in particular is all-numeric
 # text ('1'..'67') and pandas would otherwise read it as int, changing the
@@ -60,6 +44,8 @@ def main():
     ap.add_argument("--threshold", type=float, default=15.0,
                     help="keep pairs with fs_score >= threshold (default 15)")
     ap.add_argument("--out", default=os.path.join(DATA_DIR, "matches.csv"))
+    ap.add_argument("--backend", choices=["auto", "gpu", "cpu"], default="auto",
+                    help="compute backend (default auto: GPU if available, else CPU)")
     args = ap.parse_args()
 
     dfA = load(args.a_file)
@@ -71,8 +57,10 @@ def main():
     vA = dfA[dfA["valid"] == 1].copy()
     vB = dfB[dfB["valid"] == 1].copy()
 
-    matcher = StreamingMatcher(vA, vB, FEATURES)
-    links = matcher.run(INDEXER, TRANSPOSED, score_threshold=args.threshold)
+    chosen = resolve_backend(args.backend)
+    print(f"backend: {chosen.upper()}")
+    links = link(vA, vB, INDEXER, TRANSPOSED, FEATURES,
+                 threshold=args.threshold, backend=chosen)
 
     la = links.index.get_level_values(0)
     lb = links.index.get_level_values(1)

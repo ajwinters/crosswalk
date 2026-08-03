@@ -1,5 +1,5 @@
 """
-GPU port of crosswalk.indexing.match -> candidate-pair MultiIndex via cuDF.
+GPU port of crosswalk.cpu.indexing.match -> candidate-pair MultiIndex via cuDF.
 
 Blocking is just an exact-equality inner join: for each blocking key, every dfA
 record is paired with every dfB record sharing that key value. cuDF does these
@@ -41,7 +41,7 @@ def _block_transposed(dfA, dfB, j0, j1, lblA, lblB):
 
 
 def match(indexer, transposed, dfA, dfB):
-    """GPU equivalent of crosswalk.indexing.match. Returns a deduplicated
+    """GPU equivalent of crosswalk.cpu.indexing.match. Returns a deduplicated
     pandas MultiIndex of (dfA label, dfB label) candidate pairs.
     """
     lblA = dfA.index.to_numpy()

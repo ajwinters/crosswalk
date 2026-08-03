@@ -1,5 +1,5 @@
 """
-GPU port of crosswalk.classifier.match -> Fellegi-Sunter fs_score per pair.
+GPU port of crosswalk.cpu.classifier.match -> Fellegi-Sunter fs_score per pair.
 
 The match path of the CPU classifier (classifier.match) deliberately SKIPS the
 Method-I frequency weighting that the dedupe path uses, so every per-feature
@@ -31,7 +31,7 @@ import cupy as cp
 
 
 def match(bmatrix, features, dfA, dfB, e=0.05):
-    """GPU equivalent of crosswalk.classifier.match. Returns a DataFrame with the
+    """GPU equivalent of crosswalk.cpu.classifier.match. Returns a DataFrame with the
     per-feature w_<feature> columns plus fs_score, indexed by the pair MultiIndex.
     """
     epsilon = sys.float_info.epsilon
