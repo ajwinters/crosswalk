@@ -7,7 +7,7 @@ EXTRAPOLATED from its measured throughput beyond that (the CPU cannot actually
 run >=100k -- it OOMs materializing the candidate-pair index).
 
   docker run --rm -v "<repo>:/workspace/crosswalk" crosswalk-gpu \
-      python /workspace/crosswalk/gpu/plot_benchmark.py
+      python /workspace/crosswalk/scripts/plot_benchmark.py
 """
 
 import os
@@ -29,8 +29,8 @@ cpu_y_extra = [35.5, 570.0, 14238.0, 56946.0]  # 9.5 / 237.3 / 949.1 min
 speedups = {10_000: "21x", 25_000: "79x", 100_000: "196x",
             500_000: "238x", 1_000_000: "239x"}
 
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                   "benchmark_cpu_vs_gpu.png")
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(_REPO, "docs", "benchmark_cpu_vs_gpu.png")
 
 
 def main():
@@ -72,6 +72,7 @@ def main():
 
     ax.legend(loc="upper left", framealpha=0.95)
     fig.tight_layout()
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     fig.savefig(OUT, dpi=130)
     print(f"saved {OUT}")
 

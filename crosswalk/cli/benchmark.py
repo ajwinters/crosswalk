@@ -13,39 +13,22 @@ not host post-processing.
 The CPU cannot run 1M: indexing.match builds the entire ~20B-pair MultiIndex in
 RAM (~320 GB). We extrapolate its 1M time from measured throughput instead.
 
-  docker run --rm --gpus all -v "<repo>:/workspace/crosswalk" crosswalk-gpu \
-      python /workspace/crosswalk/gpu/benchmark_1m.py
+Run as `crosswalk-benchmark` (after `pip install -e .`) or
+`python -m crosswalk.cli.benchmark`.
 """
 
-import os
-import sys
 import time
 
 import numpy as np
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
-PSU = os.path.dirname(REPO)
-sys.path.insert(0, PSU)
-sys.path.insert(0, os.path.join(REPO, "datagen"))
-sys.path.insert(0, HERE)
+import cupy as cp
 
 import crosswalk.shared.preprocessing
 import crosswalk.cpu.indexing
 import crosswalk.cpu.comparing
 import crosswalk.cpu.classifier
-from generate_data import generate_match_data
-from streaming import StreamingMatcher
-import cupy as cp
-
-FIELDS = {
-    "firstname": "firstname", "lastname": "lastname", "suffix": "suffix",
-    "ssn": "ssn", "mciid": "mciid", "county": "county",
-    "dobyy": "dobyy", "dobmm": "dobmm", "dobdd": "dobdd",
-}
-INDEXER = ["firstname", "lastname", "ssn"]
-TRANSPOSED = [["firstname", "lastname"]]
-FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
+from crosswalk.datagen.generate_data import generate_match_data
+from crosswalk.gpu.streaming import StreamingMatcher
+from crosswalk.gpu.config import FIELDS, INDEXER, TRANSPOSED, FEATURES
 CF = [FEATURES[0], FEATURES[1]]
 THRESHOLD = 15.0
 

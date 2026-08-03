@@ -22,17 +22,11 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-# Ensure the crosswalk package is importable. This file lives in
-# crosswalk/datagen/, so the package's parent dir is three levels up.
-sys.path.insert(
-    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
-
 import crosswalk.shared.preprocessing
 import crosswalk.cpu.indexing
 import crosswalk.cpu.comparing
 import crosswalk.cpu.classifier
-from generate_data import (
+from crosswalk.datagen.generate_data import (
     generate_dedupe_data, generate_match_data, DEFAULT_BINARY_FIELDS,
 )
 

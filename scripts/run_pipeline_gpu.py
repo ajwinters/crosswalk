@@ -1,5 +1,5 @@
 """
-End-to-end GPU match pipeline runner (mirror of datagen/run_pipeline.py).
+End-to-end GPU match pipeline runner (mirror of scripts/run_pipeline.py).
 
 Runs: generate -> standardize (CPU) -> indexing -> comparing -> classifier,
 where indexing/comparing/classifier use the GPU ports. Reports per-stage wall
@@ -10,42 +10,26 @@ CPU-vs-GPU harness.
 standardize stays on CPU by design (O(N) string cleaning, never the bottleneck).
 A small warm-up triggers the Numba JIT compile so it is not charged to timing.
 
-  docker run --rm --gpus all -v "<repo>:/workspace/crosswalk" crosswalk-gpu \
-      python /workspace/crosswalk/gpu/run_pipeline_gpu.py --n-records 10000 --compare-cpu
+Run from the repo root (with the package importable):
+  python scripts/run_pipeline_gpu.py --n-records 10000 --compare-cpu
 """
 
 import argparse
-import os
-import sys
 import time
 
 import numpy as np
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
-PSU = os.path.dirname(REPO)
-sys.path.insert(0, PSU)
-sys.path.insert(0, os.path.join(REPO, "datagen"))
-sys.path.insert(0, HERE)
+from numba import cuda
 
 import crosswalk.shared.preprocessing
 import crosswalk.cpu.indexing
 import crosswalk.cpu.comparing
 import crosswalk.cpu.classifier
-from generate_data import generate_match_data
-from numba import cuda
-import indexing as gpu_indexing
-import comparing as gpu_comparing
-import classifier as gpu_classifier
+from crosswalk.datagen.generate_data import generate_match_data
+from crosswalk.gpu import indexing as gpu_indexing
+from crosswalk.gpu import comparing as gpu_comparing
+from crosswalk.gpu import classifier as gpu_classifier
+from crosswalk.gpu.config import FIELDS, INDEXER, TRANSPOSED, FEATURES
 
-FIELDS = {
-    "firstname": "firstname", "lastname": "lastname", "suffix": "suffix",
-    "ssn": "ssn", "mciid": "mciid", "county": "county",
-    "dobyy": "dobyy", "dobmm": "dobmm", "dobdd": "dobdd",
-}
-INDEXER = ["firstname", "lastname", "ssn"]
-TRANSPOSED = [["firstname", "lastname"]]
-FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
 COMPARE_FEATURES = [FEATURES[0], FEATURES[1]]
 
 

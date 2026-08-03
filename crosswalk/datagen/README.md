@@ -16,10 +16,10 @@ pipeline imports from here.
 
 ## Usage (run from the repo root)
 ```
-python datagen/run_pipeline.py                 # 10k records, both pipelines
-python datagen/run_pipeline.py --small         # hardcoded sanity-check data
-python datagen/run_pipeline.py --n-records 50000 --profile
-python datagen/run_pipeline.py --save-data     # writes CSVs to crosswalk/data/
+python scripts/run_pipeline.py                 # 10k records, both pipelines
+python scripts/run_pipeline.py --small         # hardcoded sanity-check data
+python scripts/run_pipeline.py --n-records 50000 --profile
+python scripts/run_pipeline.py --save-data     # writes CSVs to crosswalk/data/
 ```
 
 Key knobs: `--n-records`, `--match-rate`, `--dedupe-rate`, `--defeat-rate`

@@ -240,7 +240,7 @@ def clerical_review(df, m):
     df : pandas.DataFrame
         The data set
     m : tuple
-        The result of ``crosswalk.evaluation.confusion_matrix''
+        The result of ``crosswalk.cpu.evaluation.confusion_matrix''
 
     Returns
     -------

@@ -7,36 +7,18 @@ identical fs_score per pair. This validates that output-bounded chunking +
 on-device scoring + cross-key dedup is faithful to the reference.
 
   docker run --rm --gpus all -v "<repo>:/workspace/crosswalk" crosswalk-gpu \
-      python /workspace/crosswalk/gpu/test_streaming_parity.py
+      python /workspace/crosswalk/tests/test_streaming_parity.py
 """
 
-import os
-import sys
-
 import numpy as np
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
-PSU = os.path.dirname(REPO)
-sys.path.insert(0, PSU)
-sys.path.insert(0, os.path.join(REPO, "datagen"))
-sys.path.insert(0, HERE)
 
 import crosswalk.shared.preprocessing
 import crosswalk.cpu.indexing
 import crosswalk.cpu.comparing
 import crosswalk.cpu.classifier
-from generate_data import generate_match_data
-from streaming import StreamingMatcher
-
-FIELDS = {
-    "firstname": "firstname", "lastname": "lastname", "suffix": "suffix",
-    "ssn": "ssn", "mciid": "mciid", "county": "county",
-    "dobyy": "dobyy", "dobmm": "dobmm", "dobdd": "dobdd",
-}
-INDEXER = ["firstname", "lastname", "ssn"]
-TRANSPOSED = [["firstname", "lastname"]]
-FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
+from crosswalk.datagen.generate_data import generate_match_data
+from crosswalk.gpu.streaming import StreamingMatcher
+from crosswalk.gpu.config import FIELDS, INDEXER, TRANSPOSED, FEATURES
 
 
 def main(n_records=5000, seed=42, target_chunk_pairs=2_000_000):

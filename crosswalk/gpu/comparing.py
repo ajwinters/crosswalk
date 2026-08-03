@@ -1,5 +1,5 @@
 """
-GPU port of crosswalk.comparing.match -> the P x 7 boolean comparison matrix.
+GPU port of crosswalk.cpu.comparing.match -> the P x 7 boolean comparison matrix.
 
 Mirrors the CPU function exactly so the rest of the pipeline (and the parity
 test) is unaffected:
@@ -27,7 +27,7 @@ import pandas as pd
 import cupy as cp
 from numba import cuda
 
-from jaro_winkler import encode_names, jaro_winkler_device
+from .jaro_winkler import encode_names, jaro_winkler_device
 
 
 # ===========================================================================
@@ -82,7 +82,7 @@ def _exact_compare(a_series, b_series, posA, posB):
 
 
 def match(candidate_pairs, features, dfA, dfB, threshold=0.9, threads_per_block=128):
-    """GPU equivalent of crosswalk.comparing.match.
+    """GPU equivalent of crosswalk.cpu.comparing.match.
 
     Parameters mirror the CPU function: `features[0]` is the list of exact-match
     fields (after suffix). Returns a pandas DataFrame with integer columns

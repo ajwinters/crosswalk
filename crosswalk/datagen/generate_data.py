@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-from name_variants import nickname_variant, phonetic_variant, ocr_variant
+from .name_variants import nickname_variant, phonetic_variant, ocr_variant
 
 
 # ============================================================================
