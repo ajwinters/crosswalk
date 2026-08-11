@@ -306,7 +306,7 @@ def tiebreak(bmatrix, df):
     There is a small proportion of ties that have fairly high similarity scores
     even though they are obviously non-links. In duplication, they are mainly
     siblings (twins, particularly). This process aims to break such ties with
-    a couple of assumptions. GPS and CPS have different rules for tie-breaking.
+    a couple of assumptions. TYPE1 and TYPE2 have different rules for tie-breaking.
     For details, see Technical Report.
     
     Parameters
@@ -328,32 +328,32 @@ def tiebreak(bmatrix, df):
     
     #prepare features for breaking ties
     bmatrix = bmatrix.reset_index()
-    tbm = df[['referralid', 'firstname', 'lastname', 'dob', 'dt_referral',
-              'county', 'referraltype']]
+    tbm = df[['recordid', 'firstname', 'lastname', 'dob', 'dt_record',
+              'region', 'recordtype']]
     bmatrix = bmatrix.merge(tbm, left_on = 'level_0', right_index = True)
     bmatrix = bmatrix.merge(tbm, left_on = 'level_1', right_index = True)    
     
-    #conditions for gps
-    gps0a = bmatrix['referraltype_x'] == bmatrix['referraltype_y']
-    gps0b = bmatrix['referraltype_x'] == 'GPS'
-    gps1 = bmatrix['referralid_x'] == bmatrix['referralid_y']
-    gps2 = bmatrix['firstname_x'] != bmatrix['firstname_y']
-    gps3 = bmatrix['lastname_x'] != bmatrix['lastname_y']
-    gps4 = bmatrix['dob_x'] != bmatrix['dob_y']
-    
-    #conditions for cps
-    cps0a = bmatrix['referraltype_x'] == bmatrix['referraltype_y']
-    cps0b = bmatrix['referraltype_x'] == 'CPS'
-    cps1a = bmatrix['dt_referral_x'] == bmatrix['dt_referral_y']
-    cps1b = bmatrix['county_x'] == bmatrix['county_y']
-    cps2 = bmatrix['firstname_x'] != bmatrix['firstname_y']
-    cps3 = bmatrix['lastname_x'] != bmatrix['lastname_y']
-    cps4 = bmatrix['dob_x'] != bmatrix['dob_y']
-    
+    #conditions for type1
+    type1_0a = bmatrix['recordtype_x'] == bmatrix['recordtype_y']
+    type1_0b = bmatrix['recordtype_x'] == 'TYPE1'
+    type1_1 = bmatrix['recordid_x'] == bmatrix['recordid_y']
+    type1_2 = bmatrix['firstname_x'] != bmatrix['firstname_y']
+    type1_3 = bmatrix['lastname_x'] != bmatrix['lastname_y']
+    type1_4 = bmatrix['dob_x'] != bmatrix['dob_y']
+
+    #conditions for type2
+    type2_0a = bmatrix['recordtype_x'] == bmatrix['recordtype_y']
+    type2_0b = bmatrix['recordtype_x'] == 'TYPE2'
+    type2_1a = bmatrix['dt_record_x'] == bmatrix['dt_record_y']
+    type2_1b = bmatrix['region_x'] == bmatrix['region_y']
+    type2_2 = bmatrix['firstname_x'] != bmatrix['firstname_y']
+    type2_3 = bmatrix['lastname_x'] != bmatrix['lastname_y']
+    type2_4 = bmatrix['dob_x'] != bmatrix['dob_y']
+
     #hic rhodus, hic salta
-    broken_gps = bmatrix[(gps0a & gps0b) & gps1            & (gps2 | gps3)]
-    broken_cps = bmatrix[(cps0a & cps0b) & (cps1a & cps1b) & (cps2 | cps3)]
-    broken = pandas.concat([broken_gps, broken_cps])
+    broken_type1 = bmatrix[(type1_0a & type1_0b) & type1_1              & (type1_2 | type1_3)]
+    broken_type2 = bmatrix[(type2_0a & type2_0b) & (type2_1a & type2_1b) & (type2_2 | type2_3)]
+    broken = pandas.concat([broken_type1, broken_type2])
     combined = pandas.concat([bmatrix, broken])
     combined = combined[~combined.index.duplicated(keep = False)]
     bmatrix = combined.set_index(['level_0', 'level_1'])

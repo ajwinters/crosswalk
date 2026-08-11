@@ -17,9 +17,9 @@ stages; everything else is your choice.
 
 FIELDS = {
     "firstname": "firstname", "lastname": "lastname", "suffix": "suffix",
-    "ssn": "ssn", "mciid": "mciid", "county": "county",
+    "pid1": "pid1", "pid2": "pid2", "region": "region",
     "dobyy": "dobyy", "dobmm": "dobmm", "dobdd": "dobdd",
 }
-INDEXER = ["firstname", "lastname", "ssn"]
+INDEXER = ["firstname", "lastname", "pid1"]
 TRANSPOSED = [["firstname", "lastname"]]
-FEATURES = [["ssn", "county", "bin1", "bin2"], [[]], ["firstname", "lastname"]]
+FEATURES = [["pid1", "region", "bin1", "bin2"], [[]], ["firstname", "lastname"]]

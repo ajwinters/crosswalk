@@ -330,23 +330,23 @@ def old_index(df, idx):
         The predicted data or the gold standard data with the common index.
     """
     
-    #merge index with referralpersonid
+    #merge index with recordpersonid
     df = df.merge(idx, left_on = df.columns[0], right_on = 'index')
     df = df.merge(idx, left_on = df.columns[1], right_on = 'index')
-    df = df[['referralpersonid_x', 'referralpersonid_y']]
+    df = df[['recordpersonid_x', 'recordpersonid_y']]
     
     #drop duplicate dyads
-    df = df[df['referralpersonid_x'] != df['referralpersonid_y']]
+    df = df[df['recordpersonid_x'] != df['recordpersonid_y']]
 
     #upper triangle matrix
-    df1 = df[df['referralpersonid_x'] <= df['referralpersonid_y']]
-    df2 = df[df['referralpersonid_x'] > df['referralpersonid_y']]
-    df2 = df2.rename(columns = {'referralpersonid_x': 'referralpersonid_y',
-                                'referralpersonid_y': 'referralpersonid_x'})
+    df1 = df[df['recordpersonid_x'] <= df['recordpersonid_y']]
+    df2 = df[df['recordpersonid_x'] > df['recordpersonid_y']]
+    df2 = df2.rename(columns = {'recordpersonid_x': 'recordpersonid_y',
+                                'recordpersonid_y': 'recordpersonid_x'})
     df = df1.append(df2, sort=True)
     
     #multiindex
-    df.set_index(['referralpersonid_x', 'referralpersonid_y'], inplace = True)
+    df.set_index(['recordpersonid_x', 'recordpersonid_y'], inplace = True)
     df.sort_index(inplace = True)
 
     return df

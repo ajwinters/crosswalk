@@ -6,12 +6,12 @@ test) is unaffected:
 
   columns produced (after the cross-field fixup), matching the CPU output:
     0: firstname   1: lastname   2: suffix   3..: each field in features[0]
-  with run_pipeline's features[0] = ['ssn','county','bin1','bin2'] that is
-    [0]firstname [1]lastname [2]suffix [3]ssn [4]county [5]bin1 [6]bin2
+  with run_pipeline's features[0] = ['pid1','region','bin1','bin2'] that is
+    [0]firstname [1]lastname [2]suffix [3]pid1 [4]region [5]bin1 [6]bin2
 
 The name columns use the custom Jaro-Winkler kernel (the one thing RAPIDS lacks);
 the exact columns are plain elementwise equality (cuPy for numeric fields,
-host-side factorize for string/object fields like county). Everything is keyed
+host-side factorize for string/object fields like region). Everything is keyed
 by candidate pair, so a single Numba kernel handles all four JW comparisons per
 pair at once.
 
@@ -65,7 +65,7 @@ def _exact_compare(a_series, b_series, posA, posB):
     b = b_series.to_numpy()
 
     if a.dtype.kind in "OUS" or b.dtype.kind in "OUS":
-        # string/object (e.g. county): factorize jointly so equal strings share
+        # string/object (e.g. region): factorize jointly so equal strings share
         # a code; -1 marks missing and must never count as a match.
         codes, _ = pd.factorize(np.concatenate([a, b]), use_na_sentinel=True)
         na = len(a)
@@ -74,7 +74,7 @@ def _exact_compare(a_series, b_series, posA, posB):
         eq = (ca == cb) & (ca != -1) & (cb != -1)
         return eq.astype(np.int64)
 
-    # numeric (ssn, suffix, bin*): gather + compare on the GPU. NaN != NaN, so
+    # numeric (pid1, suffix, bin*): gather + compare on the GPU. NaN != NaN, so
     # missing values correctly yield 0.
     ag = cp.asarray(a)[cp.asarray(posA)]
     bg = cp.asarray(b)[cp.asarray(posB)]

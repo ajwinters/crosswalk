@@ -7,7 +7,7 @@ does NOT regenerate data -- it reads the files written by
 crosswalk-generate, so the same inputs are used every run and the output
 can be joined back to them.
 
-The output CSV has one row per match, with both records' ids/names/ssn, both
+The output CSV has one row per match, with both records' ids/names/pid1, both
 true_entity_ids, an is_true_match flag, and the fs_score -- enough to measure
 precision/recall and eyeball why a pair matched.
 
@@ -26,10 +26,10 @@ from crosswalk.gpu.config import FIELDS, INDEXER, TRANSPOSED, FEATURES
 
 DATA_DIR = "data"   # default I/O dir, relative to the current working directory
 
-# Force text columns to load as strings. county in particular is all-numeric
-# text ('1'..'67') and pandas would otherwise read it as int, changing the
-# schema the matcher expects (it factorizes county as an object column).
-_STR_COLS = {"county": str, "referralid": str, "referraltype": str,
+# Force text columns to load as strings. region in particular is all-numeric
+# text ('1'..'50') and pandas would otherwise read it as int, changing the
+# schema the matcher expects (it factorizes region as an object column).
+_STR_COLS = {"region": str, "recordid": str, "recordtype": str,
              "firstname": str, "lastname": str}
 
 
@@ -65,14 +65,14 @@ def main():
     la = links.index.get_level_values(0)
     lb = links.index.get_level_values(1)
     out = pd.DataFrame({
-        "a_id": vA.loc[la, "referralid"].to_numpy(),
-        "b_id": vB.loc[lb, "referralid"].to_numpy(),
+        "a_id": vA.loc[la, "recordid"].to_numpy(),
+        "b_id": vB.loc[lb, "recordid"].to_numpy(),
         "a_firstname": vA.loc[la, "firstname"].to_numpy(),
         "a_lastname": vA.loc[la, "lastname"].to_numpy(),
         "b_firstname": vB.loc[lb, "firstname"].to_numpy(),
         "b_lastname": vB.loc[lb, "lastname"].to_numpy(),
-        "a_ssn": vA.loc[la, "ssn"].to_numpy(),
-        "b_ssn": vB.loc[lb, "ssn"].to_numpy(),
+        "a_pid1": vA.loc[la, "pid1"].to_numpy(),
+        "b_pid1": vB.loc[lb, "pid1"].to_numpy(),
         "a_entity": vA.loc[la, "true_entity_id"].to_numpy(),
         "b_entity": vB.loc[lb, "true_entity_id"].to_numpy(),
         "fs_score": links["fs_score"].to_numpy(),

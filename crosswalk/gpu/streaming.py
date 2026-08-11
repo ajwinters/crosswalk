@@ -61,7 +61,7 @@ class StreamingMatcher:
         self.d_lnB, self.d_llnB = cuda.to_device(lnB_buf), cuda.to_device(lnB_len)
 
         # --- exact-field value + notna arrays, uploaded once ---
-        # numeric: keep values (NaN-aware); object (county): factorize to int codes
+        # numeric: keep values (NaN-aware); object (region): factorize to int codes
         self.exact = {}
         for f in self.exact_fields:
             a = valid_A[f].to_numpy()

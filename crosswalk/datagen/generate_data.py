@@ -160,7 +160,7 @@ def _interleave(base, extra):
 FIRST_NAMES = _interleave(FIRST_NAMES, _DIVERSE_FIRST_NAMES)
 LAST_NAMES = _interleave(LAST_NAMES, _DIVERSE_LAST_NAMES)
 
-REFERRAL_TYPES = ["GPS", "CPS"]
+RECORD_TYPES = ["TYPE1", "TYPE2"]
 ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 # Generic binary (one-hot) indicator fields. Semantics are irrelevant to the
@@ -213,8 +213,8 @@ def _random_date(rng, start_year=1960, end_year=2005):
     return year, month, day, dt
 
 
-def _random_referral_date(rng, start_year=2018, end_year=2023):
-    """Generate a random referral date."""
+def _random_record_date(rng, start_year=2018, end_year=2023):
+    """Generate a random record date."""
     year = int(rng.integers(start_year, end_year))
     month = int(rng.integers(1, 13))
     day = int(rng.integers(1, 29))
@@ -234,12 +234,12 @@ def _make_base_records(n, rng, id_prefix="R", start_eid=0,
 
     fn_indices = rng.choice(len(FIRST_NAMES), size=n, p=fn_weights)
     ln_indices = rng.choice(len(LAST_NAMES), size=n, p=ln_weights)
-    ssns = rng.integers(100_000_000, 999_999_999, size=n, endpoint=True)
-    mciids = np.arange(1001, 1001 + n)
-    counties = rng.integers(1, 68, size=n).astype(str)
+    pid1s = rng.integers(100_000_000, 999_999_999, size=n, endpoint=True)
+    pid2s = np.arange(1001, 1001 + n)
+    regions = rng.integers(1, 51, size=n).astype(str)
     has_suffix = rng.random(n) < 0.05
     suffixes = np.where(has_suffix, rng.integers(1, 4, size=n).astype(float), np.nan)
-    ref_types = rng.choice(REFERRAL_TYPES, size=n)
+    rec_types = rng.choice(RECORD_TYPES, size=n)
 
     if binary_rates is None:
         binary_rates = {f: 0.5 for f in binary_fields}
@@ -249,21 +249,21 @@ def _make_base_records(n, rng, id_prefix="R", start_eid=0,
     records = []
     for i in range(n):
         dobyy, dobmm, dobdd, dob = _random_date(rng)
-        dt_ref = _random_referral_date(rng)
+        dt_rec = _random_record_date(rng)
         rec = {
             "firstname": FIRST_NAMES[fn_indices[i]],
             "lastname": LAST_NAMES[ln_indices[i]],
-            "ssn": float(ssns[i]),
-            "mciid": float(mciids[i]),
-            "county": counties[i],
+            "pid1": float(pid1s[i]),
+            "pid2": float(pid2s[i]),
+            "region": regions[i],
             "dobyy": float(dobyy),
             "dobmm": float(dobmm),
             "dobdd": float(dobdd),
             "suffix": suffixes[i],
-            "referralid": f"{id_prefix}{i:06d}",
-            "referraltype": ref_types[i],
+            "recordid": f"{id_prefix}{i:06d}",
+            "recordtype": rec_types[i],
             "dob": dob,
-            "dt_referral": dt_ref,
+            "dt_record": dt_rec,
             "true_entity_id": start_eid + i,
         }
         for f in binary_fields:
@@ -281,12 +281,12 @@ def _vary_record(record, variation, rng,
     EXCEPT for ``sibling``, which is a different person and is assigned ``new_eid``.
 
     Variations are grouped by whether they survive blocking. The dedupe/match
-    indexers block on EXACT firstname, lastname, or ssn (plus transposed
+    indexers block on EXACT firstname, lastname, or pid1 (plus transposed
     firstname/lastname). A variant only becomes a candidate pair if at least one
     of those keys still matches exactly:
 
-      survive blocking: exact, typo_fn, typo_ln, transposed, missing_ssn,
-                        missing_mciid, diff_county, flip_binary, sibling,
+      survive blocking: exact, typo_fn, typo_ln, transposed, missing_pid1,
+                        missing_pid2, diff_region, flip_binary, sibling,
                         nickname, phonetic_fn, phonetic_ln, ocr_fn, ocr_ln
                         (each alters at most one name field, so >=1 blocking key
                         stays exact)
@@ -294,26 +294,26 @@ def _vary_record(record, variation, rng,
                         match is never even scored, i.e. an invisible false negative)
     """
     rec = record.copy()
-    rec["referralid"] = f"V{rng.integers(100000, 999999)}"
-    rec["dt_referral"] = _random_referral_date(rng)
+    rec["recordid"] = f"V{rng.integers(100000, 999999)}"
+    rec["dt_record"] = _random_record_date(rng)
 
     if variation == "exact":
-        pass  # only referralid/dt_referral differ
+        pass  # only recordid/dt_record differ
     elif variation == "typo_fn":
         rec["firstname"] = _typo(rec["firstname"], rng)
     elif variation == "typo_ln":
         rec["lastname"] = _typo(rec["lastname"], rng)
     elif variation == "transposed":
         rec["firstname"], rec["lastname"] = rec["lastname"], rec["firstname"]
-    elif variation == "missing_ssn":
-        rec["ssn"] = np.nan
-    elif variation == "missing_mciid":
-        rec["mciid"] = np.nan
-    elif variation == "diff_county":
-        rec["county"] = str(rng.integers(1, 68))
+    elif variation == "missing_pid1":
+        rec["pid1"] = np.nan
+    elif variation == "missing_pid2":
+        rec["pid2"] = np.nan
+    elif variation == "diff_region":
+        rec["region"] = str(rng.integers(1, 51))
     elif variation == "nickname":
         # Semantic first-name variant (ROBERT->BOB); falls below JW 0.9 but the
-        # lastname/ssn block still catches it. Falls back to a typo on a miss.
+        # lastname/pid1 block still catches it. Falls back to a typo on a miss.
         v = nickname_variant(rec["firstname"], rng)
         rec["firstname"] = v if v is not None else _typo(rec["firstname"], rng)
     elif variation == "phonetic_fn":
@@ -337,17 +337,17 @@ def _vary_record(record, variation, rng,
         # (entity id inherited) -> a true match the pipeline can never recover.
         rec["firstname"] = _typo(rec["firstname"], rng)
         rec["lastname"] = _typo(rec["lastname"], rng)
-        rec["ssn"] = np.nan
+        rec["pid1"] = np.nan
     elif variation == "sibling":
-        # Different person: same referralid (household), same lastname, but
-        # different firstname/DOB/ssn. Gets its OWN entity id.
+        # Different person: same recordid (household), same lastname, but
+        # different firstname/DOB/pid1. Gets its OWN entity id.
         fn_weights = _zipf_weights(len(FIRST_NAMES), s=0.8)
         rec["firstname"] = FIRST_NAMES[rng.choice(len(FIRST_NAMES), p=fn_weights)]
-        rec["referralid"] = record["referralid"]  # keep same referralid
+        rec["recordid"] = record["recordid"]  # keep same recordid
         dobyy, dobmm, dobdd, dob = _random_date(rng)
         rec["dobyy"], rec["dobmm"], rec["dobdd"], rec["dob"] = dobyy, dobmm, dobdd, dob
-        rec["ssn"] = float(rng.integers(100_000_000, 999_999_999))
-        rec["mciid"] = float(rng.integers(50000, 99999))
+        rec["pid1"] = float(rng.integers(100_000_000, 999_999_999))
+        rec["pid2"] = float(rng.integers(50000, 99999))
         if new_eid is not None:
             rec["true_entity_id"] = new_eid
     return rec
@@ -396,8 +396,8 @@ def generate_dedupe_data(n_records=10000, dedupe_rate=0.30, defeat_rate=0.05,
                                       binary_rates=binary_rates)
 
     # Survivable-variation distribution (each keeps >=1 blocking key exact).
-    surv_types = ["exact", "typo_fn", "typo_ln", "transposed", "missing_ssn",
-                  "diff_county", "flip_binary", "sibling", "nickname",
+    surv_types = ["exact", "typo_fn", "typo_ln", "transposed", "missing_pid1",
+                  "diff_region", "flip_binary", "sibling", "nickname",
                   "phonetic_fn", "phonetic_ln", "ocr_fn", "ocr_ln"]
     surv_probs = [0.25, 0.15, 0.10, 0.07, 0.04, 0.04, 0.06, 0.04, 0.08,
                   0.05, 0.04, 0.04, 0.04]
@@ -424,7 +424,7 @@ def generate_dedupe_data(n_records=10000, dedupe_rate=0.30, defeat_rate=0.05,
     df = pd.DataFrame(all_records)
     df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
     df["dob"] = pd.to_datetime(df["dob"])
-    df["dt_referral"] = pd.to_datetime(df["dt_referral"])
+    df["dt_record"] = pd.to_datetime(df["dt_record"])
     for col in ["dobyy", "dobmm", "dobdd"]:
         df[col] = df[col].astype(float)
     return df
@@ -468,8 +468,8 @@ def generate_match_data(n_records=10000, match_rate=0.85, defeat_rate=0.05,
                                    binary_rates=binary_rates)
 
     # Survivable-variation distribution (each keeps >=1 blocking key exact).
-    surv_types = ["exact", "typo_fn", "typo_ln", "transposed", "missing_ssn",
-                  "missing_mciid", "diff_county", "flip_binary", "nickname",
+    surv_types = ["exact", "typo_fn", "typo_ln", "transposed", "missing_pid1",
+                  "missing_pid2", "diff_region", "flip_binary", "nickname",
                   "phonetic_fn", "phonetic_ln", "ocr_fn", "ocr_ln"]
     surv_probs = [0.25, 0.15, 0.10, 0.08, 0.04, 0.04, 0.04, 0.06, 0.08,
                   0.05, 0.05, 0.03, 0.03]
@@ -486,7 +486,7 @@ def generate_match_data(n_records=10000, match_rate=0.85, defeat_rate=0.05,
             variant = _vary_record(source, "defeats_blocking", rng, binary_fields)
         else:
             variant = _vary_record(source, surv_variations[i], rng, binary_fields)
-        variant["referralid"] = f"B{i:06d}"
+        variant["recordid"] = f"B{i:06d}"
         matched_records.append(variant)
 
     # Unique-to-B records get fresh entity ids disjoint from dfA's
@@ -503,7 +503,7 @@ def generate_match_data(n_records=10000, match_rate=0.85, defeat_rate=0.05,
 
     for df in [dfA, dfB]:
         df["dob"] = pd.to_datetime(df["dob"])
-        df["dt_referral"] = pd.to_datetime(df["dt_referral"])
+        df["dt_record"] = pd.to_datetime(df["dt_record"])
         for col in ["dobyy", "dobmm", "dobdd"]:
             df[col] = df[col].astype(float)
 

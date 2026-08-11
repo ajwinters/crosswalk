@@ -20,7 +20,7 @@ PARITY NOTES
   * weights are summed in feat_list order, matching pandas' left-to-right
     DataFrame.sum(axis=1), so fs_score matches to floating-point exactness.
   * missingness uses pd.notna on the gathered values (works for numeric and the
-    object 'county' column alike), mirroring the CPU notna_cond.
+    object 'region' column alike), mirroring the CPU notna_cond.
 """
 
 import sys

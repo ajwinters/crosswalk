@@ -12,8 +12,7 @@ CPU library — but it runs several times faster on modest data and, thanks to a
 streaming design, scales to datasets the CPU cannot process at all.
 
 > Originally CPU library by **Hyun Woo Kim**, The Pennsylvania State University,
-> 2018–2019. GPU port by Alex
-> Winters.
+> 2018–2019. GPU port by Alex Winters, The Pennsylvania State University, 2026
 
 ---
 
@@ -24,10 +23,10 @@ record in *B* is *N × M* — a trillion comparisons at a million records each. 
 pipeline avoids that with four stages:
 
 1. **Standardize** (`shared/preprocessing.py`) — clean and normalize names and
-   fields (uppercase, strip junk, coerce SSN/DOB), and flag unusable records.
+   fields (uppercase, strip junk, coerce ID numbers/DOB), and flag unusable records.
    *O(N)* per dataset; the shared front-end for both backends.
 2. **Index / blocking** (`indexing`) — only *pair up* records that agree exactly
-   on at least one blocking key (e.g. first name, last name, or SSN, plus
+   on at least one blocking key (e.g. first name, last name, or a unique ID number, plus
    transposed names). This is what makes the problem tractable — it produces
    **candidate pairs** instead of the full cross-product.
 3. **Compare** (`comparing`) — for each candidate pair, measure field agreement:
@@ -97,8 +96,8 @@ comparison stages, so **rename your columns to `firstname` / `lastname` /
 `df["suffix"] = np.nan` — a missing field simply contributes zero weight.
 
 **Everything else is configuration, not code.** Your blocking keys and exact-match
-comparison fields are just column names you pass in — SSN, date of birth, ZIP,
-county, member ID, gender, race flags, anything. Binary / one-hot indicators need
+comparison fields are just column names you pass in — an ID number, date of birth,
+ZIP, region, a secondary reference ID, gender, race flags, anything. Binary / one-hot indicators need
 no special handling: drop them into `FEATURES[0]` and they flow through the
 exact-match + Fellegi–Sunter path automatically.
 
@@ -116,12 +115,12 @@ dfB = pd.read_csv("my_data_B.csv")
 # 2. describe your schema
 FIELDS = {                                       # what standardize should clean
     "firstname": "firstname", "lastname": "lastname", "suffix": "suffix",
-    "ssn": "ssn", "county": "county",            # optional; omit what you lack
+    "pid1": "pid1", "region": "region",          # optional; omit what you lack
 }
-INDEXER    = ["firstname", "lastname", "ssn"]    # blocking keys — YOUR columns
+INDEXER    = ["firstname", "lastname", "pid1"]   # blocking keys — YOUR columns
 TRANSPOSED = [["firstname", "lastname"]]         # also catch swapped names
 FEATURES   = [
-    ["ssn", "county", "gender"],                 # exact-match fields — YOUR columns
+    ["pid1", "region", "gender"],                # exact-match fields — YOUR columns
     [[]],                                        # interaction terms (none)
     ["firstname", "lastname"],                   # frequency-weighted (dedupe only)
 ]
@@ -241,4 +240,4 @@ records' fields, both `true_entity_id`s, an `is_true_match` flag, and the
 ## Authors
 
 - **Hyun Woo Kim** — original library, The Pennsylvania State University, 2018–2019.
-- **Alex Winters** — code review and the GPU port.
+- **Alex Winters** — GPU port, The Pennsylvania State University, 2026.
